@@ -84,7 +84,7 @@ int sort()
 	while (corrected == 1)	/// Re-run if record corrected
 	{
 		corrected = 0;
-		rewind(fp_idx);		/// << restart from the bigining
+		rewind(fp_idx);		/// << restart from the beginning
 		i++;
 		printf(" Loop# %d, ", i);
 		
@@ -179,7 +179,7 @@ int search(int r_n)
 	fseek(fp_idx, 0, SEEK_END);
 	TotalRecords = (ftell(fp_idx) / sizeof(idx1));
 	printf(" (%d / %d = #%d) ", ftell(fp_idx), sizeof(idx1), TotalRecords);
-	rewind(fp_idx);		/// << restart from the bigining
+	rewind(fp_idx);		/// << restart from the beginning
 	if (TotalRecords > 50)
 	{
 		SeekEntryNo = TotalRecords / 2;				  /// Seek middle of the database
@@ -193,7 +193,7 @@ int search(int r_n)
 			} else
 			{
 				/// rewind & go to while loop to search the 1st half
-				rewind(fp_idx);		/// << restart from the bigining
+				rewind(fp_idx);		/// << restart from the beginning
 			}
 		}
 	} 
