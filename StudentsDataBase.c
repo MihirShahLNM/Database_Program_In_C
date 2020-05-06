@@ -3,7 +3,7 @@
 #include <conio.h>
 #include <process.h>
 
-// V4 by Mihir dated 06-May-2020
+// StudentsDataBase V5 by Mihir dated 06-May-2020
 
 typedef struct struct_student {
 	int roll;
@@ -25,7 +25,7 @@ typedef struct struct_index {
 
 static int displayDeleted = 0;
 
-int copyFile(char sourcePath[100], char destPath[100])
+int copyFile(char sourcePath[], char destPath[])
 {
 	FILE *sourceFile, *destFile;
     char ch;
@@ -61,7 +61,6 @@ int copyFile(char sourcePath[100], char destPath[100])
         ch = fgetc(sourceFile);
     }
 
-
     /* Finally close files to release resources */
     fclose(sourceFile);
     fclose(destFile);
@@ -73,14 +72,14 @@ int sort()
 {
 	// called by add(), re-index(), purge().
 	
-	int i = 0, corrected = 1;
+	int i = 0, corrected = 1, TotalRecords = 0;
 	FILE *fp_idx; 
 	idx_student idx1, idx2;
 	
 	fp_idx = fopen(idxFile, "r+b");
 
 	printf(" Sorting");
-
+	
 	///////////////////
 	while (corrected == 1)	/// Re-run if record corrected
 	{
@@ -117,8 +116,6 @@ int sort()
 			} else	/// there is no next record
 			{
 				// printf(">> Last Record.\n");
-				// if (!(fwrite(&idx1, sizeof(idx1), 1, fp_idx)))
-				//	 printf("\n\nIndex mismatch !!! Reindex needed.");
 				
 			}
 		}
@@ -167,7 +164,111 @@ int reIndex()
 	return 0;
 }
 
-void add()
+int search(int r_n)
+{
+	int flag = 0, TotalRecords = 0, SeekEntryNo = 0;
+	FILE *fp_ent, *fp_idx; 
+	ent_student ent1;
+	idx_student idx1;
+	
+	fp_ent = fopen(entFile, "r+b");
+	fp_idx = fopen(idxFile, "r+b");
+	
+	/// Build the logic to search faster
+	/// Count no of records in Index
+	fseek(fp_idx, 0, SEEK_END);
+	TotalRecords = (ftell(fp_idx) / sizeof(idx1));
+	printf(" (%d / %d = #%d) ", ftell(fp_idx), sizeof(idx1), TotalRecords);
+	rewind(fp_idx);		/// << restart from the bigining
+	if (TotalRecords > 50)
+	{
+		SeekEntryNo = TotalRecords / 2;				  /// Seek middle of the database
+		printf(" Seek %d ", SeekEntryNo);
+		fseek(fp_idx, sizeof(idx1) * SeekEntryNo, SEEK_SET);
+		if (fread(&idx1, sizeof(idx1), 1, fp_idx))
+		{
+			if (idx1.roll < r_n)
+			{
+				/// Go ahead to while loop to search the 2d half
+			} else
+			{
+				/// rewind & go to while loop to search the 1st half
+				rewind(fp_idx);		/// << restart from the bigining
+			}
+		}
+	} 
+	
+	/// While loop searches sequencially from current pointer to find the record.
+	while (fread(&idx1, sizeof(idx1), 1, fp_idx))
+	{
+		/// printf("\n\nSeeking idx1.roll:%d, idx1.EntryNo:%d", idx1.roll, idx1.EntryNo);
+		if ((idx1.roll == r_n) && (idx1.isDeleted != 1))		/// Search Roll to Get EntryNo from index 
+		{
+			flag = 1;
+			break;
+		}
+	}
+		
+	/// Print record if found 
+	if (flag == 1)
+	{
+		// printf("\n\nFound idx1.roll:%d, idx1.EntryNo:%d", idx1.roll, idx1.EntryNo);
+		/// Get EntryNo from index & then seek same EntryNo in main database.
+		fseek(fp_ent, sizeof(ent1) * (idx1.EntryNo - 1), SEEK_SET);
+		fread(&ent1, sizeof(ent1), 1, fp_ent);
+		printf("\n\nRoll :%d", ent1.roll);
+		printf("\n\nName :%s", ent1.name);
+		printf("\n\nMarks :%f", ent1.marks);
+	}
+	printf("\n\n");
+	
+	fclose(fp_ent);
+	fclose(fp_idx);
+	
+	return flag;
+}
+
+int search_slow(int r_n)
+{
+	int flag = 0;
+	FILE *fp_ent, *fp_idx; 
+	ent_student ent1;
+	idx_student idx1;
+	
+	fp_ent = fopen(entFile, "r+b");
+	fp_idx = fopen(idxFile, "r+b");
+	
+	// Build the logic to search faster
+	
+	
+	while (fread(&idx1, sizeof(idx1), 1, fp_idx))
+	{
+		/// printf("\n\nSeeking idx1.roll:%d, idx1.EntryNo:%d", idx1.roll, idx1.EntryNo);
+		if ((idx1.roll == r_n) && (idx1.isDeleted != 1))		/// Search Roll to Get EntryNo from index 
+		{
+			flag = 1;
+			break;
+		}
+	}
+	if (flag == 1)
+	{
+		// printf("\n\nFound idx1.roll:%d, idx1.EntryNo:%d", idx1.roll, idx1.EntryNo);
+		/// Get EntryNo from index & then seek same EntryNo in main database.
+		fseek(fp_ent, sizeof(ent1) * (idx1.EntryNo - 1), SEEK_SET);
+		fread(&ent1, sizeof(ent1), 1, fp_ent);
+		printf("\n\nRoll :%d", ent1.roll);
+		printf("\n\nName :%s", ent1.name);
+		printf("\n\nMarks :%f", ent1.marks);
+	}
+	printf("\n\n");
+	
+	fclose(fp_ent);
+	fclose(fp_idx);
+	
+	return flag;
+}
+
+int add()
 {
 	int n = 0, LastEntryNo = 0;
 	float temp;
@@ -175,9 +276,6 @@ void add()
 	ent_student ent1;
 	idx_student idx1;
 	
-	fp_ent = fopen(entFile, "r+b");
-	fp_idx = fopen(idxFile, "r+b");
-
 	printf("\n\nEnter roll no: ");
 	scanf("%d", &ent1.roll);
 	printf("\nEnter Name: ");
@@ -189,14 +287,20 @@ void add()
 	
 	/// Check if Roll No already exists !!!
 	/// Use Search()
+	if (search(ent1.roll) == 1)
+	{
+		return 1;
+	}
 	
+	fp_ent = fopen(entFile, "r+b");
+	fp_idx = fopen(idxFile, "r+b");
 	
 	/// Count no of records in Index
-	while ((fread(&idx1, sizeof(idx1), 1, fp_idx)))
-	 	LastEntryNo++;
-	printf("\nNew Entry#%d\n", LastEntryNo+1);
+	// while ((fread(&idx1, sizeof(idx1), 1, fp_idx)))
+	 	// LastEntryNo++;
 	fseek(fp_ent, 0, SEEK_END);
-	// LastEntryNo = ftell(fp_ent) / sizeof(ent1);
+	LastEntryNo = (ftell(fp_ent) / sizeof(ent1));
+	printf("\nNew Entry#%d\n", LastEntryNo+1);
 	
 	if (fwrite(&ent1, sizeof(ent1), 1, fp_ent))
 	{
@@ -218,6 +322,7 @@ void add()
 
 	//// Sort the Index
 	sort();
+	return 0;
 }
 
 int edit(int r_n)
@@ -228,11 +333,16 @@ int edit(int r_n)
 	ent_student ent1;
 	idx_student idx1;
 	
-	fp_ent = fopen(entFile, "r+b");
-	fp_idx = fopen(idxFile, "r+b");
-
 	/// Check if Roll No exists !!!
 	/// Use Search()
+	if (search(r_n) != 1)
+	{
+		flag = 1;
+		return flag;
+	}
+	
+	fp_ent = fopen(entFile, "r+b");
+	fp_idx = fopen(idxFile, "r+b");
 
 	while (fread(&idx1, sizeof(idx1), 1, fp_idx))
 	{
@@ -269,49 +379,6 @@ int edit(int r_n)
 	fclose(fp_ent);
 	fclose(fp_idx);
 
-	return flag;
-}
-
-int search(int r_n)
-{
-	int flag = 0;
-	FILE *fp_ent, *fp_idx; 
-	ent_student ent1;
-	idx_student idx1;
-	
-	fp_ent = fopen(entFile, "r+b");
-	fp_idx = fopen(idxFile, "r+b");
-	
-	// Build the logic to search faster
-	
-	while (fread(&idx1, sizeof(idx1), 1, fp_idx))
-	{
-		// printf("\n\nSeeking idx1.roll:%d, idx1.EntryNo:%d", idx1.roll, idx1.EntryNo);
-		if ((idx1.roll == r_n) && (idx1.isDeleted != 1))		/// Search Roll to Get EntryNo from index 
-		{
-			flag = 1;
-			break;
-		}
-	}
-	if (!flag)
-	{
-		printf("\n\nRecord NOT found !!!");
-	}
-	else
-	{
-		// printf("\n\nFound idx1.roll:%d, idx1.EntryNo:%d", idx1.roll, idx1.EntryNo);
-		/// Get EntryNo from index & then seek same EntryNo in main database.
-		fseek(fp_ent, sizeof(ent1) * (idx1.EntryNo - 1), SEEK_SET);
-		fread(&ent1, sizeof(ent1), 1, fp_ent);
-		printf("\n\nRoll :%d", ent1.roll);
-		printf("\n\nName :%s", ent1.name);
-		printf("\n\nMarks :%f", ent1.marks);
-	}
-	printf("\n\n");
-	
-	fclose(fp_ent);
-	fclose(fp_idx);
-	
 	return flag;
 }
 
@@ -520,7 +587,8 @@ int main()
 		switch (choice)
 		{
 			case 1:
-				add();
+				if (add() == 1)
+					printf("Roll No already exists. Aborting ADD.");
 				break;
 			case 2:
 				display();
@@ -534,7 +602,8 @@ int main()
 			case 5:
 				printf("\n\nEnter Roll No To Search Record : ");
 				scanf("%d", &r_n);
-				search(r_n);
+				if (search(r_n) == 0)
+					printf("\n\nRecord NOT found !!!");
 				break;
 			case 6:
 				printf("\n\nEnter Roll No To Edit Record : ");
